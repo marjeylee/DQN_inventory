@@ -61,7 +61,7 @@ def main():
     vs = VirtualSituation()  # 模拟情景
     status = Status(vs)
     d_model = DQN(Action.actions_len, status.get_feature_num(), learning_rate=10e-7, reward_decay=0.9,
-                  e_greedy=0.5, replace_target_iter=200, memory_size=200
+                  e_greedy=0.1, replace_target_iter=200, memory_size=200
                   # output_graph = True
                   )
     train(d_model, vs)
