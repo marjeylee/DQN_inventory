@@ -18,15 +18,23 @@ class VirtualSituation:
         构建虚拟环境
         """
         self.current_time = 0  # 当前时间
+        random_consume = np.random.randint(0, 400, size=5)
         self.p1 = Factory(name='p1', location=[4, 1], identify=0)
         self.p2 = Factory(name='p2', location=[1, 7], identify=1)
-        self.c1 = Customer(name='c1', location=[4, 3], capacity=500, inventory=356, consume=1, identify=2)
-        self.c2 = Customer(name='c2', location=[7, 4], capacity=400, inventory=232, consume=2, identify=3)
-        self.c3 = Customer(name='c3', location=[2, 6], capacity=500, inventory=444, consume=2, identify=4)
-        self.c4 = Customer(name='c4', location=[8, 7], capacity=500, inventory=500, consume=1, identify=5)
-        self.c5 = Customer(name='c5', location=[7, 8], capacity=550, inventory=500, consume=1, identify=6)
+        self.c1 = Customer(name='c1', location=[4, 3], capacity=500, inventory=random_consume[0], consume=1,
+                           identify=2)
+        self.c2 = Customer(name='c2', location=[7, 4], capacity=400, inventory=random_consume[1], consume=1,
+                           identify=3)
+        self.c3 = Customer(name='c3', location=[2, 6], capacity=500, inventory=random_consume[2], consume=2,
+                           identify=4)
+        self.c4 = Customer(name='c4', location=[8, 7], capacity=500, inventory=random_consume[3], consume=2,
+                           identify=5)
+        self.c5 = Customer(name='c5', location=[7, 8], capacity=550, inventory=random_consume[4], consume=1,
+                           identify=6)
         # 车辆初始位置设定为在p1。
-        self.vehicle = Vehicle(name='vehicle', location=[4, 1], capacity=500, inventory=500, unload_each_time=10,
+        vehicle_inventory = np.random.randint(0, 400)
+        self.vehicle = Vehicle(name='vehicle', location=[4, 1], capacity=500, inventory=vehicle_inventory,
+                               unload_each_time=10,
                                location_name='p1')
 
     def spend_one_hour(self):
@@ -87,22 +95,23 @@ class VirtualSituation:
 
     def step(self, action):
         """
-        记录每个action的结果
+        记录每个action的结果,同时记录奖励等等。
         :param action:
         :return:
         """
         action = Action.actions[action]
         time_before_action = self.current_time
+        self.spend_one_hour()  # 决策下一步行动需要时间
         action = action.replace('to_', '')
         self.go_to_new_location(action)  # 到新的目的地去，返回距离
-        unload_volume = self.update_status()  # 更新车辆操作，返回卸货量
+        unload_volume = self.update_status()  # 更新车辆操作，返回卸货量以及加油量
         observation_, reward = self.get_observation(), 0
         time_after_action = self.current_time
         cost_time = time_after_action - time_before_action
         if cost_time > 0:
-            reward = float(unload_volume) / float(cost_time)
+            reward = float(unload_volume) / float(cost_time) * 10
         if self.validate_is_stockout():
-            reward = -1000
+            reward = -10000
             return observation_, reward, True
         return observation_, reward, False
 
@@ -146,8 +155,9 @@ class VirtualSituation:
         if current_location_name.find('p') >= 0:
             """在工厂，加满油，耗时1"""
             self.spend_one_hour()
-            self.vehicle.inventory = self.vehicle.capacity
-            return 0
+            fuel_quantity = self.vehicle.capacity - self.vehicle.inventory  # 容量 - 当前库存
+            self.vehicle.inventory = self.vehicle.capacity  # 加满
+            return fuel_quantity / 10
         """到客户那"""
         # 加10单位油，需要时间1
         if self.vehicle.inventory >= self.vehicle.unload_each_time and (
@@ -157,7 +167,7 @@ class VirtualSituation:
             current_location.inventory = current_location.inventory + self.vehicle.unload_each_time
             self.spend_one_hour()
             return self.vehicle.unload_each_time
-        return 0
+        return -10  # 闲逛的代价一次-10
 
     def validate_is_stockout(self):
         """

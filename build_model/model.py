@@ -5,6 +5,8 @@
 import numpy as np
 import tensorflow as tf
 
+from utility import combine_file_path
+
 
 def leaky_relu(x, leak=0.2, name="LeakyRelu"):
     """
@@ -71,8 +73,7 @@ class DQN:
             tf.summary.FileWriter("logs/", self.sess.graph)
         saver = tf.train.Saver()
         # self.sess.run(tf.global_variables_initializer())
-        saver.restore(self.sess, "./Model/model")
-
+        saver.restore(self.sess, combine_file_path("build_model/Model/model"))
         self.cost_his = []
         self.cost = None
 
@@ -82,7 +83,7 @@ class DQN:
         :return:
         """
         saver = tf.train.Saver()
-        saver.save(self.sess, "./Model/model")
+        saver.save(self.sess, combine_file_path("build_model/Model/model"))
 
     def _build_net(self):
         """
@@ -159,13 +160,13 @@ class DQN:
             # 前向传播，获取每个action的q value
             actions_value = self.sess.run(self.q_eval, feed_dict={self.s: observation})
             action = np.argmax(actions_value)
+            # print(actions_value)
         else:
             action = np.random.randint(0, self.n_actions)
         return action
 
     def learn(self):
         # 初始化进行替换
-
         if self.learn_step_counter % self.replace_target_iter == 0:
             self.sess.run(self.replace_target_op)
             print('\ntarget_params_replaced\n')
@@ -192,7 +193,6 @@ class DQN:
         _, self.cost = self.sess.run([self._train_op, self.loss],
                                      feed_dict={self.s: batch_memory[:, :self.n_features],
                                                 self.q_target: q_target})
-        print(int(self.cost))
         self.cost_his.append(self.cost)
         self.epsilon = self.epsilon + self.epsilon_increment if self.epsilon < self.epsilon_max else self.epsilon_max
         self.learn_step_counter += 1
